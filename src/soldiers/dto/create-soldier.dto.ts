@@ -9,6 +9,11 @@ export class CreateSoldierDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(50)
+  lastNameGenitive!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(50)
   firstName!: string;
 
   @IsString()
@@ -28,11 +33,16 @@ export class CreateSoldierDto {
 
   @IsString()
   @IsNotEmpty()
-  @MaxLength(100)
+  @MaxLength(500)
   platoon!: string;
 
   @IsString()
   @IsNotEmpty()
-  @MaxLength(100)
+  @MaxLength(500)
   squad!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(30)
+  phone!: string;
 }

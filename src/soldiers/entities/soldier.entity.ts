@@ -14,6 +14,9 @@ export class Soldier {
   @Column()
   lastName!: string;
 
+  @Column({ default: '' })
+  lastNameGenitive!: string;
+
   @Column()
   firstName!: string;
 
@@ -31,6 +34,9 @@ export class Soldier {
 
   @Column()
   squad!: string;
+
+  @Column()
+  phone!: string;
 
   @CreateDateColumn()
   createdAt!: Date;
