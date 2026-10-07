@@ -38,6 +38,9 @@ export class Soldier {
   @Column()
   phone!: string;
 
+  @Column({ default: '' })
+  address!: string;
+
   @CreateDateColumn()
   createdAt!: Date;
 

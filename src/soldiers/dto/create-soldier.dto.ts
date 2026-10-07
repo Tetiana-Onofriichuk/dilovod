@@ -45,4 +45,8 @@ export class CreateSoldierDto {
   @IsNotEmpty()
   @MaxLength(30)
   phone!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  address!: string;
 }
