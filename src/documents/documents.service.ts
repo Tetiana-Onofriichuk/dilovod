@@ -12,6 +12,7 @@ import { CreateVacationReportDto } from './dto/create-vacation-report.dto';
 import { CreateFamilyLeaveReportDto } from './dto/create-family-leave-report.dto';
 import { CreateBankDetailsReportDto } from './dto/create-bank-details-report.dto';
 import { CreateTrainingWithWeaponReportDto } from './dto/create-training-with-weapon-report.dto';
+import { CreateTrainingWithoutWeaponReportDto } from './dto/create-training-without-weapon-report.dto';
 
 @Injectable()
 export class DocumentsService {
@@ -399,6 +400,102 @@ export class DocumentsService {
       type: 'nodebuffer',
       mimeType:
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
+  }
+
+  async generateTrainingWithoutWeaponReport(
+    dto: CreateTrainingWithoutWeaponReportDto,
+  ): Promise<Buffer> {
+    const soldier = await this.soldiersRepository.findOne({
+      where: { id: dto.soldierId },
+    });
+
+    if (!soldier) {
+      throw new NotFoundException('Військовослужбовця не знайдено');
+    }
+
+    const requisites = await this.requisitesRepository.findOne({
+      where: {},
+    });
+
+    if (!requisites) {
+      throw new NotFoundException('Реквізити не знайдено');
+    }
+
+    const templatePath = path.join(
+      process.cwd(),
+      'templates',
+      'training-without-weapon-report-template.docx',
+    );
+
+    if (!fs.existsSync(templatePath)) {
+      throw new NotFoundException(
+        'Шаблон рапорту на навчання без зброї не знайдено',
+      );
+    }
+
+    const template = fs.readFileSync(templatePath);
+    const zip = new PizZip(template);
+
+    const doc = new Docxtemplater(zip, {
+      paragraphLoop: true,
+      linebreaks: true,
+      delimiters: {
+        start: '{{',
+        end: '}}',
+      },
+    });
+
+    const reportYear = new Date(`${dto.reportDate}T00:00:00`).getFullYear();
+
+    const dryRationText = dto.includeDryRation
+      ? 'Прошу видати повсякденний набір сухих продуктів на 1 (одну) добу, в кількості 1(одна) штука.'
+      : '';
+
+    doc.render({
+      startDate: this.formatDate(dto.startDate),
+      endDate: this.formatDate(dto.endDate),
+
+      destination: dto.destination,
+      soldierFullNameGenitive: dto.soldierFullNameGenitive,
+      position: soldier.position,
+      rankGenitive: this.getRankGenitive(soldier.rank),
+
+      trainingPurpose: dto.trainingPurpose,
+      basis: dto.basis,
+      dryRationText,
+
+      reportDate: this.formatDate(dto.reportDate),
+      reportYear,
+
+      // Командир роти
+      companyCommanderPosition: requisites.companyCommanderPosition,
+      companyCommanderRank: requisites.companyCommanderRank,
+      companyCommanderFirstName: requisites.companyCommanderFirstName,
+      companyCommanderPatronymic: requisites.companyCommanderPatronymic,
+      companyCommanderLastName:
+        requisites.companyCommanderLastName.toUpperCase(),
+
+      companyCommanderRankGenitive: this.getRankGenitive(
+        requisites.companyCommanderRank,
+      ),
+      companyCommanderLastNameGenitive:
+        requisites.companyCommanderLastNameGenitive,
+      companyCommanderFirstNameInitial:
+        requisites.companyCommanderFirstName.charAt(0),
+      companyCommanderPatronymicInitial:
+        requisites.companyCommanderPatronymic.charAt(0),
+
+      // Командир військової частини
+      unitCommanderPosition: requisites.unitCommanderPosition,
+      unitCommanderRank: requisites.unitCommanderRank,
+      unitCommanderFirstName: requisites.unitCommanderFirstName,
+      unitCommanderLastName: requisites.unitCommanderLastName.toUpperCase(),
+    });
+
+    return doc.getZip().generate({
+      type: 'nodebuffer',
+      compression: 'DEFLATE',
     });
   }
 

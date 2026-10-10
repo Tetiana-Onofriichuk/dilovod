@@ -6,6 +6,7 @@ import { CreateVacationReportDto } from './dto/create-vacation-report.dto';
 import { CreateFamilyLeaveReportDto } from './dto/create-family-leave-report.dto';
 import { CreateBankDetailsReportDto } from './dto/create-bank-details-report.dto';
 import { CreateTrainingWithWeaponReportDto } from './dto/create-training-with-weapon-report.dto';
+import { CreateTrainingWithoutWeaponReportDto } from './dto/create-training-without-weapon-report.dto';
 
 @Controller('documents')
 export class DocumentsController {
@@ -73,6 +74,24 @@ export class DocumentsController {
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'Content-Disposition':
         'attachment; filename="training-with-weapon-report.docx"',
+      'Content-Length': file.length,
+    });
+
+    res.send(file);
+  }
+  @Post('training-without-weapon-report')
+  async generateTrainingWithoutWeaponReport(
+    @Body() dto: CreateTrainingWithoutWeaponReportDto,
+    @Res() res: Response,
+  ) {
+    const file =
+      await this.documentsService.generateTrainingWithoutWeaponReport(dto);
+
+    res.set({
+      'Content-Type':
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'Content-Disposition':
+        'attachment; filename="training-without-weapon-report.docx"',
       'Content-Length': file.length,
     });
 
