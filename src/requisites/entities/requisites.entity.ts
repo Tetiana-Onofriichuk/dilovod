@@ -16,7 +16,13 @@ export class Requisites {
   companyCommanderFirstName!: string;
 
   @Column({ default: '' })
+  companyCommanderPatronymic!: string;
+
+  @Column({ default: '' })
   companyCommanderLastName!: string;
+
+  @Column({ default: '' })
+  companyCommanderLastNameGenitive!: string;
 
   // Командир військової частини
   @Column({ default: '' })
@@ -30,4 +36,17 @@ export class Requisites {
 
   @Column({ default: '' })
   unitCommanderLastName!: string;
+
+  // Начальник фінансово-економічної служби
+  @Column({ default: '' })
+  financeChiefPosition!: string;
+
+  @Column({ default: '' })
+  financeChiefRank!: string;
+
+  @Column({ default: '' })
+  financeChiefFirstName!: string;
+
+  @Column({ default: '' })
+  financeChiefLastName!: string;
 }

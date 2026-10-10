@@ -10,6 +10,8 @@ import { Soldier } from '../soldiers/entities/soldier.entity';
 import { Requisites } from '../requisites/entities/requisites.entity';
 import { CreateVacationReportDto } from './dto/create-vacation-report.dto';
 import { CreateFamilyLeaveReportDto } from './dto/create-family-leave-report.dto';
+import { CreateBankDetailsReportDto } from './dto/create-bank-details-report.dto';
+import { CreateTrainingWithWeaponReportDto } from './dto/create-training-with-weapon-report.dto';
 
 @Injectable()
 export class DocumentsService {
@@ -215,6 +217,182 @@ export class DocumentsService {
       unitCommanderRank: requisites.unitCommanderRank,
       unitCommanderFirstName: requisites.unitCommanderFirstName,
       unitCommanderLastName: requisites.unitCommanderLastName.toUpperCase(),
+    });
+
+    return doc.getZip().generate({
+      type: 'nodebuffer',
+      mimeType:
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
+  }
+  async generateBankDetailsReport(
+    dto: CreateBankDetailsReportDto,
+  ): Promise<Buffer> {
+    const soldier = await this.soldiersRepository.findOne({
+      where: { id: dto.soldierId },
+    });
+
+    if (!soldier) {
+      throw new NotFoundException('Військовослужбовця не знайдено');
+    }
+
+    const requisites = await this.requisitesRepository.findOne({
+      where: {},
+    });
+
+    if (!requisites) {
+      throw new NotFoundException('Реквізити не знайдено');
+    }
+
+    const templatePath = path.join(
+      process.cwd(),
+      'templates',
+      'bank-details-report-template.docx',
+    );
+
+    if (!fs.existsSync(templatePath)) {
+      throw new NotFoundException(
+        'Шаблон рапорту про банківські реквізити не знайдено',
+      );
+    }
+
+    const template = fs.readFileSync(templatePath);
+
+    const zip = new PizZip(template);
+
+    const doc = new Docxtemplater(zip, {
+      paragraphLoop: true,
+      linebreaks: true,
+      delimiters: {
+        start: '{{',
+        end: '}}',
+      },
+    });
+
+    const positionCapitalized =
+      soldier.position.charAt(0).toUpperCase() + soldier.position.slice(1);
+
+    doc.render({
+      bankAccount: dto.bankAccount,
+      bankName: dto.bankName,
+      reportDate: this.formatDate(dto.reportDate),
+
+      position: positionCapitalized,
+      rank: soldier.rank,
+      firstName: soldier.firstName,
+      lastName: soldier.lastName.toUpperCase(),
+
+      financeChiefPosition: requisites.financeChiefPosition,
+    });
+
+    return doc.getZip().generate({
+      type: 'nodebuffer',
+      mimeType:
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
+  }
+
+  async generateTrainingWithWeaponReport(
+    dto: CreateTrainingWithWeaponReportDto,
+  ): Promise<Buffer> {
+    const soldier = await this.soldiersRepository.findOne({
+      where: { id: dto.soldierId },
+    });
+
+    if (!soldier) {
+      throw new NotFoundException('Військовослужбовця не знайдено');
+    }
+
+    const requisites = await this.requisitesRepository.findOne({
+      where: {},
+    });
+
+    if (!requisites) {
+      throw new NotFoundException('Реквізити не знайдено');
+    }
+
+    const templatePath = path.join(
+      process.cwd(),
+      'templates',
+      'training-with-weapon-report-template.docx',
+    );
+
+    if (!fs.existsSync(templatePath)) {
+      throw new NotFoundException(
+        'Шаблон рапорту на навчання зі зброєю не знайдено',
+      );
+    }
+
+    const template = fs.readFileSync(templatePath);
+    const zip = new PizZip(template);
+
+    const doc = new Docxtemplater(zip, {
+      paragraphLoop: true,
+      linebreaks: true,
+      delimiters: {
+        start: '{{',
+        end: '}}',
+      },
+    });
+
+    const startDate = new Date(`${dto.startDate}T00:00:00`);
+    const endDate = new Date(`${dto.endDate}T00:00:00`);
+
+    const days =
+      Math.floor(
+        (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
+      ) + 1;
+
+    const dryRationText = dto.includeDryRation
+      ? 'Прошу видати повсякденний набір сухих продуктів на 1 (одну) добу, в кількості 1(одна) штука.'
+      : '';
+    const reportYear = new Date(`${dto.reportDate}T00:00:00`).getFullYear();
+
+    doc.render({
+      startDate: this.formatDate(dto.startDate),
+      endDate: this.formatDate(dto.endDate),
+      days,
+
+      destination: dto.destination,
+
+      soldierFullNameGenitive: dto.soldierFullNameGenitive,
+
+      position: soldier.position,
+      rankGenitive: this.getRankGenitive(soldier.rank),
+
+      weapon: soldier.weapon,
+
+      trainingPurpose: dto.trainingPurpose,
+      basis: dto.basis,
+
+      dryRationText,
+
+      reportDate: this.formatDate(dto.reportDate),
+      reportYear,
+
+      companyCommanderPosition: requisites.companyCommanderPosition,
+      companyCommanderRank: requisites.companyCommanderRank,
+      companyCommanderFirstName: requisites.companyCommanderFirstName,
+      companyCommanderLastName:
+        requisites.companyCommanderLastName.toUpperCase(),
+
+      unitCommanderPosition: requisites.unitCommanderPosition,
+      unitCommanderRank: requisites.unitCommanderRank,
+      unitCommanderFirstName: requisites.unitCommanderFirstName,
+      unitCommanderLastName: requisites.unitCommanderLastName.toUpperCase(),
+
+      companyCommanderRankGenitive: this.getRankGenitive(
+        requisites.companyCommanderRank,
+      ),
+
+      companyCommanderLastNameGenitive:
+        requisites.companyCommanderLastNameGenitive,
+
+      companyCommanderFirstNameInitial:
+        requisites.companyCommanderFirstName.charAt(0),
+
+      companyCommanderPatronymicInitial:
+        requisites.companyCommanderPatronymic.charAt(0),
     });
 
     return doc.getZip().generate({

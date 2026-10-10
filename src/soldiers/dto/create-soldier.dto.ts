@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateSoldierDto {
   @IsString()
@@ -40,6 +40,11 @@ export class CreateSoldierDto {
   @IsNotEmpty()
   @MaxLength(500)
   squad!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  weapon?: string;
 
   @IsString()
   @IsNotEmpty()

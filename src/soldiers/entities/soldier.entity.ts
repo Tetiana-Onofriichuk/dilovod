@@ -17,6 +17,9 @@ export class Soldier {
   @Column({ default: '' })
   lastNameGenitive!: string;
 
+  @Column({ default: '' })
+  lastNameSearch!: string;
+
   @Column()
   firstName!: string;
 
@@ -34,6 +37,9 @@ export class Soldier {
 
   @Column()
   squad!: string;
+
+  @Column({ default: '' })
+  weapon!: string;
 
   @Column()
   phone!: string;

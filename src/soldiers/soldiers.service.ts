@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, Repository } from 'typeorm';
+import { Like, Repository } from 'typeorm';
 
 import { Soldier } from './entities/soldier.entity';
 import { CreateSoldierDto } from './dto/create-soldier.dto';
@@ -14,7 +14,10 @@ export class SoldiersService {
   ) {}
 
   create(createSoldierDto: CreateSoldierDto) {
-    const soldier = this.soldiersRepository.create(createSoldierDto);
+    const soldier = this.soldiersRepository.create({
+      ...createSoldierDto,
+      lastNameSearch: createSoldierDto.lastName.toLocaleLowerCase('uk-UA'),
+    });
 
     return this.soldiersRepository.save(soldier);
   }
@@ -23,7 +26,9 @@ export class SoldiersService {
     const [soldiers, total] = await this.soldiersRepository.findAndCount({
       where: search
         ? {
-            lastName: ILike(`%${search}%`),
+            lastNameSearch: Like(
+              `%${search.trim().toLocaleLowerCase('uk-UA')}%`,
+            ),
           }
         : {},
       skip: (page - 1) * limit,
@@ -54,7 +59,15 @@ export class SoldiersService {
     return soldier;
   }
   async update(id: number, updateSoldierDto: UpdateSoldierDto) {
-    await this.soldiersRepository.update(id, updateSoldierDto);
+    const updateData = {
+      ...updateSoldierDto,
+      ...(updateSoldierDto.lastName && {
+        lastNameSearch: updateSoldierDto.lastName.toLocaleLowerCase('uk-UA'),
+      }),
+    };
+
+    await this.soldiersRepository.update(id, updateData);
+
     return this.findOne(id);
   }
 
