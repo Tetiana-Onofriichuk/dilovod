@@ -1,4 +1,12 @@
-import { Body, Controller, Post, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Delete,
+  Res,
+} from '@nestjs/common';
 import type { Response } from 'express';
 
 import { DocumentsService } from './documents.service';
@@ -11,6 +19,35 @@ import { CreateTrainingWithoutWeaponReportDto } from './dto/create-training-with
 @Controller('documents')
 export class DocumentsController {
   constructor(private readonly documentsService: DocumentsService) {}
+
+  @Get()
+  async getDocuments() {
+    return this.documentsService.getDocuments();
+  }
+
+  @Get(':id/download')
+  async downloadDocument(@Param('id') id: string, @Res() res: Response) {
+    const { buffer, fileName } = await this.documentsService.getDocumentFile(
+      Number(id),
+    );
+
+    res.set({
+      'Content-Type':
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'Content-Disposition': `attachment; filename="${fileName}"`,
+      'Content-Length': buffer.length,
+    });
+
+    res.send(buffer);
+  }
+  @Delete(':id')
+  async deleteDocument(@Param('id') id: string) {
+    await this.documentsService.deleteDocument(Number(id));
+
+    return {
+      message: 'Документ успішно видалено',
+    };
+  }
 
   @Post('vacation-report')
   async generateVacationReport(

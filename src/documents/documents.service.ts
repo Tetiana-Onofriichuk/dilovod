@@ -8,6 +8,7 @@ import Docxtemplater from 'docxtemplater';
 
 import { Soldier } from '../soldiers/entities/soldier.entity';
 import { Requisites } from '../requisites/entities/requisites.entity';
+import { Document } from './entities/document.entity';
 import { CreateVacationReportDto } from './dto/create-vacation-report.dto';
 import { CreateFamilyLeaveReportDto } from './dto/create-family-leave-report.dto';
 import { CreateBankDetailsReportDto } from './dto/create-bank-details-report.dto';
@@ -22,6 +23,9 @@ export class DocumentsService {
 
     @InjectRepository(Requisites)
     private readonly requisitesRepository: Repository<Requisites>,
+
+    @InjectRepository(Document)
+    private readonly documentsRepository: Repository<Document>,
   ) {}
 
   async generateVacationReport(dto: CreateVacationReportDto): Promise<Buffer> {
@@ -120,11 +124,17 @@ export class DocumentsService {
       unitCommanderLastName: requisites.unitCommanderLastName.toUpperCase(),
     });
 
-    return doc.getZip().generate({
+    const buffer = doc.getZip().generate({
       type: 'nodebuffer',
       mimeType:
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     });
+
+    await this.saveDocument(buffer, 'Рапорт на відпустку', 'vacation', [
+      soldier,
+    ]);
+
+    return buffer;
   }
 
   async generateFamilyLeaveReport(
@@ -220,11 +230,20 @@ export class DocumentsService {
       unitCommanderLastName: requisites.unitCommanderLastName.toUpperCase(),
     });
 
-    return doc.getZip().generate({
+    const buffer = doc.getZip().generate({
       type: 'nodebuffer',
       mimeType:
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     });
+
+    await this.saveDocument(
+      buffer,
+      'Рапорт на відпустку за сімейними обставинами',
+      'family-leave',
+      [soldier],
+    );
+
+    return buffer;
   }
   async generateBankDetailsReport(
     dto: CreateBankDetailsReportDto,
@@ -286,11 +305,20 @@ export class DocumentsService {
       financeChiefPosition: requisites.financeChiefPosition,
     });
 
-    return doc.getZip().generate({
+    const buffer = doc.getZip().generate({
       type: 'nodebuffer',
       mimeType:
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     });
+
+    await this.saveDocument(
+      buffer,
+      'Рапорт про банківські реквізити',
+      'bank-details',
+      [soldier],
+    );
+
+    return buffer;
   }
 
   async generateTrainingWithWeaponReport(
@@ -440,11 +468,20 @@ export class DocumentsService {
         requisites.companyCommanderPatronymic.charAt(0),
     });
 
-    return doc.getZip().generate({
+    const buffer = doc.getZip().generate({
       type: 'nodebuffer',
       mimeType:
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     });
+
+    await this.saveDocument(
+      buffer,
+      'Рапорт на навчання зі зброєю',
+      'training-with-weapon',
+      soldiers,
+    );
+
+    return buffer;
   }
   async generateTrainingWithoutWeaponReport(
     dto: CreateTrainingWithoutWeaponReportDto,
@@ -572,10 +609,110 @@ export class DocumentsService {
       unitCommanderLastName: requisites.unitCommanderLastName.toUpperCase(),
     });
 
-    return doc.getZip().generate({
+    const buffer = doc.getZip().generate({
       type: 'nodebuffer',
       compression: 'DEFLATE',
     });
+
+    await this.saveDocument(
+      buffer,
+      'Рапорт на навчання без зброї',
+      'training-without-weapon',
+      soldiers,
+    );
+
+    return buffer;
+  }
+  async getDocuments() {
+    const documents = await this.documentsRepository.find({
+      relations: {
+        soldiers: true,
+      },
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+
+    return documents.map((document) => ({
+      id: document.id,
+      title: document.title,
+      type: document.type,
+      soldiers: document.soldiers.map((soldier) => ({
+        id: soldier.id,
+        lastName: soldier.lastName,
+        firstName: soldier.firstName,
+        patronymic: soldier.patronymic,
+      })),
+      fileName: document.fileName,
+      createdAt: document.createdAt,
+    }));
+  }
+  async getDocumentFile(id: number): Promise<{
+    buffer: Buffer;
+    fileName: string;
+  }> {
+    const document = await this.documentsRepository.findOne({
+      where: { id },
+    });
+
+    if (!document) {
+      throw new NotFoundException('Документ не знайдено');
+    }
+
+    if (!fs.existsSync(document.filePath)) {
+      throw new NotFoundException('Файл документа не знайдено');
+    }
+
+    const buffer = fs.readFileSync(document.filePath);
+
+    return {
+      buffer,
+      fileName: document.fileName,
+    };
+  }
+
+  async deleteDocument(id: number): Promise<void> {
+    const document = await this.documentsRepository.findOne({
+      where: { id },
+    });
+
+    if (!document) {
+      throw new NotFoundException('Документ не знайдено');
+    }
+
+    if (fs.existsSync(document.filePath)) {
+      fs.unlinkSync(document.filePath);
+    }
+
+    await this.documentsRepository.remove(document);
+  }
+  private async saveDocument(
+    buffer: Buffer,
+    title: string,
+    type: string,
+    soldiers: Soldier[],
+  ): Promise<void> {
+    const documentsDirectory = path.join(process.cwd(), 'documents');
+
+    if (!fs.existsSync(documentsDirectory)) {
+      fs.mkdirSync(documentsDirectory, { recursive: true });
+    }
+
+    const timestamp = Date.now();
+    const fileName = `${type}-${timestamp}.docx`;
+    const filePath = path.join(documentsDirectory, fileName);
+
+    fs.writeFileSync(filePath, buffer);
+
+    const document = this.documentsRepository.create({
+      title,
+      type,
+      soldiers,
+      fileName,
+      filePath,
+    });
+
+    await this.documentsRepository.save(document);
   }
 
   private formatDate(date: string): string {
