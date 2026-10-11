@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { SoldiersModule } from './soldiers/soldiers.module';
 import { RequisitesModule } from './requisites/requisites.module';
 import { DocumentsModule } from './documents/documents.module';
+import { TasksModule } from './tasks/tasks.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { DocumentsModule } from './documents/documents.module';
     SoldiersModule,
     RequisitesModule,
     DocumentsModule,
+    TasksModule,
   ],
   controllers: [AppController],
   providers: [AppService],
