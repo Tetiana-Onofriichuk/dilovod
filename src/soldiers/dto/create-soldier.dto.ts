@@ -32,6 +32,10 @@ export class CreateSoldierDto {
   position!: string;
 
   @IsString()
+  @MaxLength(200)
+  positionGenitive!: string;
+
+  @IsString()
   @IsNotEmpty()
   @MaxLength(500)
   platoon!: string;

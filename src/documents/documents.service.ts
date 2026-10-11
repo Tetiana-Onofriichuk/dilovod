@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
 import PizZip from 'pizzip';
@@ -296,12 +296,36 @@ export class DocumentsService {
   async generateTrainingWithWeaponReport(
     dto: CreateTrainingWithWeaponReportDto,
   ): Promise<Buffer> {
-    const soldier = await this.soldiersRepository.findOne({
-      where: { id: dto.soldierId },
+    const soldiers = await this.soldiersRepository.find({
+      where: {
+        id: In(dto.soldierIds),
+      },
     });
 
-    if (!soldier) {
-      throw new NotFoundException('Військовослужбовця не знайдено');
+    if (soldiers.length !== dto.soldierIds.length) {
+      throw new NotFoundException(
+        'Одного або декількох військовослужбовців не знайдено',
+      );
+    }
+
+    const orderedSoldiers = dto.soldierIds.map((id) => {
+      const soldier = soldiers.find((item) => item.id === id);
+
+      if (!soldier) {
+        throw new NotFoundException('Військовослужбовця не знайдено');
+      }
+
+      return soldier;
+    });
+
+    const soldierWithoutWeapon = orderedSoldiers.find(
+      (soldier) => !soldier.weapon?.trim(),
+    );
+
+    if (soldierWithoutWeapon) {
+      throw new NotFoundException(
+        'У одного або декількох військовослужбовців не вказана зброя',
+      );
     }
 
     const requisites = await this.requisitesRepository.findOne({
@@ -347,21 +371,41 @@ export class DocumentsService {
     const dryRationText = dto.includeDryRation
       ? 'Прошу видати повсякденний набір сухих продуктів на 1 (одну) добу, в кількості 1(одна) штука.'
       : '';
+
     const reportYear = new Date(`${dto.reportDate}T00:00:00`).getFullYear();
+
+    const soldiersList = orderedSoldiers
+      .map((soldier, index) => {
+        let fullNameGenitive: string;
+
+        if (index === 0) {
+          fullNameGenitive = dto.soldierFullNameGenitive;
+        } else {
+          const additionalSoldier = dto.additionalSoldiersGenitive.find(
+            (item) => item.soldierId === soldier.id,
+          );
+
+          fullNameGenitive =
+            additionalSoldier?.fullNameGenitive ??
+            `${soldier.lastNameGenitive ?? soldier.lastName} ${soldier.firstName} ${soldier.patronymic}`;
+        }
+
+        return `${this.getRankGenitive(
+          soldier.rank,
+        )} ${fullNameGenitive}, ${soldier.positionGenitive || soldier.position}, із закріпленою за ним зброєю ${soldier.weapon}`;
+      })
+      .join(';\n\t');
 
     doc.render({
       startDate: this.formatDate(dto.startDate),
       endDate: this.formatDate(dto.endDate),
       days,
-
       destination: dto.destination,
-
       soldierFullNameGenitive: dto.soldierFullNameGenitive,
-
-      position: soldier.position,
-      rankGenitive: this.getRankGenitive(soldier.rank),
-
-      weapon: soldier.weapon,
+      position: orderedSoldiers[0].position,
+      rankGenitive: this.getRankGenitive(orderedSoldiers[0].rank),
+      weapon: orderedSoldiers[0].weapon,
+      soldiersList,
 
       trainingPurpose: dto.trainingPurpose,
       basis: dto.basis,
@@ -402,17 +446,29 @@ export class DocumentsService {
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     });
   }
-
   async generateTrainingWithoutWeaponReport(
     dto: CreateTrainingWithoutWeaponReportDto,
   ): Promise<Buffer> {
-    const soldier = await this.soldiersRepository.findOne({
-      where: { id: dto.soldierId },
+    const soldiers = await this.soldiersRepository.find({
+      where: {
+        id: In(dto.soldierIds),
+      },
     });
 
-    if (!soldier) {
-      throw new NotFoundException('Військовослужбовця не знайдено');
+    if (soldiers.length !== dto.soldierIds.length) {
+      throw new NotFoundException(
+        'Одного або декількох військовослужбовців не знайдено',
+      );
     }
+    const orderedSoldiers = dto.soldierIds.map((id) => {
+      const soldier = soldiers.find((item) => item.id === id);
+
+      if (!soldier) {
+        throw new NotFoundException('Військовослужбовця не знайдено');
+      }
+
+      return soldier;
+    });
 
     const requisites = await this.requisitesRepository.findOne({
       where: {},
@@ -452,14 +508,39 @@ export class DocumentsService {
       ? 'Прошу видати повсякденний набір сухих продуктів на 1 (одну) добу, в кількості 1(одна) штука.'
       : '';
 
+    const soldiersList = orderedSoldiers
+      .map((soldier, index) => {
+        let fullNameGenitive: string;
+
+        if (index === 0) {
+          fullNameGenitive = dto.soldierFullNameGenitive;
+        } else {
+          const additionalSoldier = dto.additionalSoldiersGenitive.find(
+            (item) => item.soldierId === soldier.id,
+          );
+
+          fullNameGenitive =
+            additionalSoldier?.fullNameGenitive ??
+            `${soldier.lastNameGenitive ?? soldier.lastName} ${soldier.firstName} ${soldier.patronymic}`;
+        }
+
+        return `${this.getRankGenitive(
+          soldier.rank,
+        )} ${fullNameGenitive}, ${soldier.positionGenitive || soldier.position}`;
+      })
+      .join(';\n\t');
+
     doc.render({
       startDate: this.formatDate(dto.startDate),
       endDate: this.formatDate(dto.endDate),
 
       destination: dto.destination,
+
       soldierFullNameGenitive: dto.soldierFullNameGenitive,
-      position: soldier.position,
-      rankGenitive: this.getRankGenitive(soldier.rank),
+      position: orderedSoldiers[0].position,
+      rankGenitive: this.getRankGenitive(orderedSoldiers[0].rank),
+
+      soldiersList,
 
       trainingPurpose: dto.trainingPurpose,
       basis: dto.basis,
@@ -468,7 +549,6 @@ export class DocumentsService {
       reportDate: this.formatDate(dto.reportDate),
       reportYear,
 
-      // Командир роти
       companyCommanderPosition: requisites.companyCommanderPosition,
       companyCommanderRank: requisites.companyCommanderRank,
       companyCommanderFirstName: requisites.companyCommanderFirstName,
@@ -486,7 +566,6 @@ export class DocumentsService {
       companyCommanderPatronymicInitial:
         requisites.companyCommanderPatronymic.charAt(0),
 
-      // Командир військової частини
       unitCommanderPosition: requisites.unitCommanderPosition,
       unitCommanderRank: requisites.unitCommanderRank,
       unitCommanderFirstName: requisites.unitCommanderFirstName,

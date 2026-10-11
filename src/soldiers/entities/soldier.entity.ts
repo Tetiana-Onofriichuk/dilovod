@@ -32,6 +32,9 @@ export class Soldier {
   @Column()
   position!: string;
 
+  @Column({ default: '' })
+  positionGenitive!: string;
+
   @Column()
   platoon!: string;
 
