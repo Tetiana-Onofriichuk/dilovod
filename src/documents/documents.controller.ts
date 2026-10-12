@@ -25,6 +25,11 @@ export class DocumentsController {
     return this.documentsService.getDocuments();
   }
 
+  @Get('soldier/:soldierId')
+  async getDocumentsBySoldier(@Param('soldierId') soldierId: string) {
+    return this.documentsService.getDocumentsBySoldier(Number(soldierId));
+  }
+
   @Get(':id/download')
   async downloadDocument(@Param('id') id: string, @Res() res: Response) {
     const { buffer, fileName } = await this.documentsService.getDocumentFile(

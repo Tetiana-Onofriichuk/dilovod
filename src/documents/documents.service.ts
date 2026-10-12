@@ -647,6 +647,37 @@ export class DocumentsService {
       createdAt: document.createdAt,
     }));
   }
+
+  async getDocumentsBySoldier(soldierId: number) {
+    const soldier = await this.soldiersRepository.findOne({
+      where: { id: soldierId },
+    });
+
+    if (!soldier) {
+      throw new NotFoundException('Військовослужбовця не знайдено');
+    }
+
+    const documents = await this.documentsRepository
+      .createQueryBuilder('document')
+      .leftJoinAndSelect('document.soldiers', 'soldier')
+      .where('soldier.id = :soldierId', { soldierId })
+      .orderBy('document.createdAt', 'DESC')
+      .getMany();
+
+    return documents.map((document) => ({
+      id: document.id,
+      title: document.title,
+      type: document.type,
+      soldiers: document.soldiers.map((soldier) => ({
+        id: soldier.id,
+        lastName: soldier.lastName,
+        firstName: soldier.firstName,
+        patronymic: soldier.patronymic,
+      })),
+      fileName: document.fileName,
+      createdAt: document.createdAt,
+    }));
+  }
   async getDocumentFile(id: number): Promise<{
     buffer: Buffer;
     fileName: string;
