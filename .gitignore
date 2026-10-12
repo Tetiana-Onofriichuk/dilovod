@@ -3,3 +3,4 @@ dist
 .env
 dilovod.sqlite
 documents/
+backups/

@@ -7,6 +7,7 @@ import { SoldiersModule } from './soldiers/soldiers.module';
 import { RequisitesModule } from './requisites/requisites.module';
 import { DocumentsModule } from './documents/documents.module';
 import { TasksModule } from './tasks/tasks.module';
+import { BackupModule } from './backup/backup.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { TasksModule } from './tasks/tasks.module';
     RequisitesModule,
     DocumentsModule,
     TasksModule,
+    BackupModule,
   ],
   controllers: [AppController],
   providers: [AppService],
