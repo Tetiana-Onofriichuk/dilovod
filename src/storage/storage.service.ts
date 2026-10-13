@@ -26,6 +26,10 @@ export class StorageService {
   }
 
   getTemplatesPath(): string {
+    if (process.env.OPORA_TEMPLATES_PATH) {
+      return process.env.OPORA_TEMPLATES_PATH;
+    }
+
     return join(process.cwd(), 'templates');
   }
 }

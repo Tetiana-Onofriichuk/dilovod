@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { join } from 'path';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -17,10 +18,13 @@ import { getDatabasePath } from './storage/storage-paths';
       type: 'better-sqlite3',
       database: getDatabasePath(),
       autoLoadEntities: true,
+
       synchronize: process.env.NODE_ENV !== 'production',
-      migrations: ['dist/database/migrations/*.js'],
+
+      migrations: [join(__dirname, 'database', 'migrations', '*.js')],
       migrationsRun: process.env.NODE_ENV === 'production',
     }),
+
     SoldiersModule,
     RequisitesModule,
     DocumentsModule,
