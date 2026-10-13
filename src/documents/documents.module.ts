@@ -3,13 +3,17 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { Soldier } from '../soldiers/entities/soldier.entity';
 import { Requisites } from '../requisites/entities/requisites.entity';
+import { StorageModule } from '../storage/storage.module';
 
 import { Document } from './entities/document.entity';
 import { DocumentsController } from './documents.controller';
 import { DocumentsService } from './documents.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Soldier, Requisites, Document])],
+  imports: [
+    TypeOrmModule.forFeature([Soldier, Requisites, Document]),
+    StorageModule,
+  ],
   controllers: [DocumentsController],
   providers: [DocumentsService],
 })

@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
+import { StorageService } from '../storage/storage.service';
 
 import { Soldier } from '../soldiers/entities/soldier.entity';
 import { Requisites } from '../requisites/entities/requisites.entity';
@@ -26,6 +27,8 @@ export class DocumentsService {
 
     @InjectRepository(Document)
     private readonly documentsRepository: Repository<Document>,
+
+    private readonly storageService: StorageService,
   ) {}
 
   async generateVacationReport(dto: CreateVacationReportDto): Promise<Buffer> {
@@ -46,8 +49,7 @@ export class DocumentsService {
     }
 
     const templatePath = path.join(
-      process.cwd(),
-      'templates',
+      this.storageService.getTemplatesPath(),
       'vacation-report-template.docx',
     );
 
@@ -157,8 +159,7 @@ export class DocumentsService {
     }
 
     const templatePath = path.join(
-      process.cwd(),
-      'templates',
+      this.storageService.getTemplatesPath(),
       'family-leave-report-template.docx',
     );
 
@@ -265,8 +266,7 @@ export class DocumentsService {
     }
 
     const templatePath = path.join(
-      process.cwd(),
-      'templates',
+      this.storageService.getTemplatesPath(),
       'bank-details-report-template.docx',
     );
 
@@ -365,8 +365,7 @@ export class DocumentsService {
     }
 
     const templatePath = path.join(
-      process.cwd(),
-      'templates',
+      this.storageService.getTemplatesPath(),
       'training-with-weapon-report-template.docx',
     );
 
@@ -516,8 +515,7 @@ export class DocumentsService {
     }
 
     const templatePath = path.join(
-      process.cwd(),
-      'templates',
+      this.storageService.getTemplatesPath(),
       'training-without-weapon-report-template.docx',
     );
 
@@ -690,11 +688,16 @@ export class DocumentsService {
       throw new NotFoundException('Документ не знайдено');
     }
 
-    if (!fs.existsSync(document.filePath)) {
+    const filePath = path.join(
+      this.storageService.getDocumentsPath(),
+      document.fileName,
+    );
+
+    if (!fs.existsSync(filePath)) {
       throw new NotFoundException('Файл документа не знайдено');
     }
 
-    const buffer = fs.readFileSync(document.filePath);
+    const buffer = fs.readFileSync(filePath);
 
     return {
       buffer,
@@ -711,8 +714,13 @@ export class DocumentsService {
       throw new NotFoundException('Документ не знайдено');
     }
 
-    if (fs.existsSync(document.filePath)) {
-      fs.unlinkSync(document.filePath);
+    const filePath = path.join(
+      this.storageService.getDocumentsPath(),
+      document.fileName,
+    );
+
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
     }
 
     await this.documentsRepository.remove(document);
@@ -723,7 +731,7 @@ export class DocumentsService {
     type: string,
     soldiers: Soldier[],
   ): Promise<void> {
-    const documentsDirectory = path.join(process.cwd(), 'documents');
+    const documentsDirectory = this.storageService.getDocumentsPath();
 
     if (!fs.existsSync(documentsDirectory)) {
       fs.mkdirSync(documentsDirectory, { recursive: true });
@@ -740,7 +748,6 @@ export class DocumentsService {
       type,
       soldiers,
       fileName,
-      filePath,
     });
 
     await this.documentsRepository.save(document);

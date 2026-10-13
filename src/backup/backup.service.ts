@@ -7,18 +7,20 @@ import { cpSync, existsSync, mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
 import AdmZip from 'adm-zip';
 import { DataSource } from 'typeorm';
+import { StorageService } from '../storage/storage.service';
 
 @Injectable()
 export class BackupService {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly storageService: StorageService,
+  ) {}
 
   createBackup(prefix = 'OPORA_backup'): string {
     try {
-      const rootPath = process.cwd();
-
-      const databasePath = join(rootPath, 'dilovod.sqlite');
-      const documentsPath = join(rootPath, 'documents');
-      const backupsPath = join(rootPath, 'backups');
+      const databasePath = this.storageService.getDatabasePath();
+      const documentsPath = this.storageService.getDocumentsPath();
+      const backupsPath = this.storageService.getBackupsPath();
 
       if (!existsSync(databasePath)) {
         throw new InternalServerErrorException(
@@ -107,11 +109,9 @@ export class BackupService {
   }
 
   async restoreBackup(buffer: Buffer) {
-    const rootPath = process.cwd();
-
-    const databasePath = join(rootPath, 'dilovod.sqlite');
-    const documentsPath = join(rootPath, 'documents');
-    const tempPath = join(rootPath, 'backup-temp');
+    const databasePath = this.storageService.getDatabasePath();
+    const documentsPath = this.storageService.getDocumentsPath();
+    const tempPath = this.storageService.getBackupTempPath();
 
     let connectionClosed = false;
 
