@@ -38,6 +38,9 @@ export class Soldier {
   @Column()
   platoon!: string;
 
+  @Column({ default: '' })
+  platoonGenitive!: string;
+
   @Column()
   squad!: string;
 

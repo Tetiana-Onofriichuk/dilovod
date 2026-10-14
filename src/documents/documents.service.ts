@@ -84,6 +84,7 @@ export class DocumentsService {
     doc.render({
       days: dto.days,
       daysWords: this.numberToUkrainianWords(dto.days),
+      hasTravelDays: Number(dto.travelDays) > 0,
 
       travelDays: dto.travelDays,
       travelDaysWords: this.numberToUkrainianWords(dto.travelDays),
@@ -106,6 +107,7 @@ export class DocumentsService {
       rank: soldier.rank,
       position: positionCapitalized,
       platoon: soldier.platoon,
+      platoonGenitive: soldier.platoonGenitive,
       squad: soldier.squad,
 
       reportDate: this.formatDate(dto.reportDate),
