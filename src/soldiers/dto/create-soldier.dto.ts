@@ -1,65 +1,67 @@
-import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateSoldierDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(50)
-  lastName!: string;
+  lastName?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(50)
-  lastNameGenitive!: string;
+  lastNameGenitive?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(50)
-  firstName!: string;
+  firstName?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(50)
-  patronymic!: string;
+  patronymic?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(100)
-  rank!: string;
+  rank?: string;
 
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(200)
-  position!: string;
-
+  @IsOptional()
   @IsString()
   @MaxLength(200)
-  positionGenitive!: string;
+  position?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  @MaxLength(500)
-  platoon!: string;
+  @MaxLength(200)
+  positionGenitive?: string;
 
+  @IsOptional()
   @IsString()
   @MaxLength(500)
-  platoonGenitive!: string;
+  platoon?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(500)
-  squad!: string;
+  platoonGenitive?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  squad?: string;
 
   @IsOptional()
   @IsString()
   @MaxLength(200)
   weapon?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(30)
-  phone!: string;
+  phone?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  address!: string;
+  address?: string;
 }

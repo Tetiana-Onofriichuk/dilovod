@@ -16,7 +16,9 @@ export class SoldiersService {
   create(createSoldierDto: CreateSoldierDto) {
     const soldier = this.soldiersRepository.create({
       ...createSoldierDto,
-      lastNameSearch: createSoldierDto.lastName.toLocaleLowerCase('uk-UA'),
+      lastNameSearch: (createSoldierDto.lastName ?? '').toLocaleLowerCase(
+        'uk-UA',
+      ),
     });
 
     return this.soldiersRepository.save(soldier);

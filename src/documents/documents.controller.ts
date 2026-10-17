@@ -15,6 +15,7 @@ import { CreateFamilyLeaveReportDto } from './dto/create-family-leave-report.dto
 import { CreateBankDetailsReportDto } from './dto/create-bank-details-report.dto';
 import { CreateTrainingWithWeaponReportDto } from './dto/create-training-with-weapon-report.dto';
 import { CreateTrainingWithoutWeaponReportDto } from './dto/create-training-without-weapon-report.dto';
+import { CreatePositionAcceptanceReportDto } from './dto/create-position-acceptance-report.dto';
 
 @Controller('documents')
 export class DocumentsController {
@@ -134,6 +135,24 @@ export class DocumentsController {
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'Content-Disposition':
         'attachment; filename="training-without-weapon-report.docx"',
+      'Content-Length': file.length,
+    });
+
+    res.send(file);
+  }
+  @Post('position-acceptance-report')
+  async generatePositionAcceptanceReport(
+    @Body() dto: CreatePositionAcceptanceReportDto,
+    @Res() res: Response,
+  ) {
+    const file =
+      await this.documentsService.generatePositionAcceptanceReport(dto);
+
+    res.set({
+      'Content-Type':
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'Content-Disposition':
+        'attachment; filename="position-acceptance-report.docx"',
       'Content-Length': file.length,
     });
 

@@ -3,7 +3,7 @@ dist/
 .env
 
 dilovod.sqlite
-documents/
+/documents/
 backups/
 backup-temp/
 migration-*.sqlite

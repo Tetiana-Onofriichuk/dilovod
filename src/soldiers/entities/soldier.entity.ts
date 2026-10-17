@@ -11,7 +11,7 @@ export class Soldier {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column()
+  @Column({ default: '' })
   lastName!: string;
 
   @Column({ default: '' })
@@ -20,34 +20,34 @@ export class Soldier {
   @Column({ default: '' })
   lastNameSearch!: string;
 
-  @Column()
+  @Column({ default: '' })
   firstName!: string;
 
-  @Column({ nullable: true })
+  @Column({ default: '' })
   patronymic!: string;
 
-  @Column()
+  @Column({ default: '' })
   rank!: string;
 
-  @Column()
+  @Column({ default: '' })
   position!: string;
 
   @Column({ default: '' })
   positionGenitive!: string;
 
-  @Column()
+  @Column({ default: '' })
   platoon!: string;
 
   @Column({ default: '' })
   platoonGenitive!: string;
 
-  @Column()
+  @Column({ default: '' })
   squad!: string;
 
   @Column({ default: '' })
   weapon!: string;
 
-  @Column()
+  @Column({ default: '' })
   phone!: string;
 
   @Column({ default: '' })

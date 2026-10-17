@@ -15,6 +15,7 @@ import { CreateFamilyLeaveReportDto } from './dto/create-family-leave-report.dto
 import { CreateBankDetailsReportDto } from './dto/create-bank-details-report.dto';
 import { CreateTrainingWithWeaponReportDto } from './dto/create-training-with-weapon-report.dto';
 import { CreateTrainingWithoutWeaponReportDto } from './dto/create-training-without-weapon-report.dto';
+import { CreatePositionAcceptanceReportDto } from './dto/create-position-acceptance-report.dto';
 
 @Injectable()
 export class DocumentsService {
@@ -619,6 +620,103 @@ export class DocumentsService {
       'Рапорт на навчання без зброї',
       'training-without-weapon',
       soldiers,
+    );
+
+    return buffer;
+  }
+
+  async generatePositionAcceptanceReport(
+    dto: CreatePositionAcceptanceReportDto,
+  ): Promise<Buffer> {
+    const soldier = await this.soldiersRepository.findOne({
+      where: { id: dto.soldierId },
+    });
+
+    if (!soldier) {
+      throw new NotFoundException('Військовослужбовця не знайдено');
+    }
+
+    const requisites = await this.requisitesRepository.findOne({
+      where: {},
+    });
+
+    if (!requisites) {
+      throw new NotFoundException('Реквізити не знайдено');
+    }
+
+    const templatePath = path.join(
+      this.storageService.getTemplatesPath(),
+      'position-acceptance-report-template.docx',
+    );
+
+    if (!fs.existsSync(templatePath)) {
+      throw new NotFoundException('Шаблон рапорту не знайдено');
+    }
+
+    const template = fs.readFileSync(templatePath);
+
+    const zip = new PizZip(template);
+
+    const doc = new Docxtemplater(zip, {
+      paragraphLoop: true,
+      linebreaks: true,
+      delimiters: {
+        start: '{{',
+        end: '}}',
+      },
+    });
+
+    const lastNameUpper = soldier.lastName.toUpperCase();
+
+    const initials = `${soldier.firstName.charAt(0)}.${soldier.patronymic.charAt(0)}.`;
+
+    const reportYear = new Date(`${dto.reportDate}T00:00:00`).getFullYear();
+
+    const positionCapitalized =
+      soldier.position.charAt(0).toUpperCase() + soldier.position.slice(1);
+
+    doc.render({
+      firstName: soldier.firstName,
+      lastNameUpper,
+      initials,
+
+      rank: soldier.rank,
+      rankGenitive: this.getRankGenitive(soldier.rank),
+
+      lastNameGenitive: soldier.lastNameGenitive,
+
+      position: positionCapitalized,
+      positionGenitive: soldier.positionGenitive,
+
+      squad: soldier.squad,
+      platoonGenitive: soldier.platoonGenitive,
+
+      reportDate: this.formatDate(dto.reportDate),
+      reportYear,
+
+      companyCommanderPosition: requisites.companyCommanderPosition,
+      companyCommanderRank: requisites.companyCommanderRank,
+      companyCommanderFirstName: requisites.companyCommanderFirstName,
+      companyCommanderLastName:
+        requisites.companyCommanderLastName.toUpperCase(),
+
+      unitCommanderPosition: requisites.unitCommanderPosition,
+      unitCommanderRank: requisites.unitCommanderRank,
+      unitCommanderFirstName: requisites.unitCommanderFirstName,
+      unitCommanderLastName: requisites.unitCommanderLastName.toUpperCase(),
+    });
+
+    const buffer = doc.getZip().generate({
+      type: 'nodebuffer',
+      mimeType:
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
+
+    await this.saveDocument(
+      buffer,
+      'Рапорт про прийняття справ та посади',
+      'position-acceptance',
+      [soldier],
     );
 
     return buffer;
