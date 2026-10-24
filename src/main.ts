@@ -1,9 +1,14 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+
 import { AppModule } from './app.module';
+import { prepareLegacyDatabase } from './database/prepare-legacy-database';
 
 async function bootstrap() {
+  prepareLegacyDatabase();
+
   const app = await NestFactory.create(AppModule);
+
   app.enableCors({
     origin: 'http://localhost:5173',
   });

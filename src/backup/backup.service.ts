@@ -7,6 +7,8 @@ import { cpSync, existsSync, mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
 import AdmZip from 'adm-zip';
 import { DataSource } from 'typeorm';
+
+import { prepareLegacyDatabase } from '../database/prepare-legacy-database';
 import { StorageService } from '../storage/storage.service';
 
 @Injectable()
@@ -113,16 +115,17 @@ export class BackupService {
     const documentsPath = this.storageService.getDocumentsPath();
     const tempPath = this.storageService.getBackupTempPath();
 
-    let connectionClosed = false;
+    let safetyBackupPath: string | null = null;
+    let replacementStarted = false;
 
     try {
-      // 1. Перевіряємо резервну копію
+      // 1. Перевіряємо backup до будь-яких змін поточних даних.
       this.validateBackup(buffer);
 
-      // 2. Створюємо страховочну копію поточного стану
-      const safetyBackupPath = this.createSafetyBackup();
+      // 2. Створюємо повну страховочну копію поточного стану.
+      safetyBackupPath = this.createSafetyBackup();
 
-      // 3. Готуємо тимчасову папку
+      // 3. Готуємо тимчасову папку.
       if (existsSync(tempPath)) {
         rmSync(tempPath, {
           recursive: true,
@@ -132,29 +135,29 @@ export class BackupService {
 
       mkdirSync(tempPath, { recursive: true });
 
-      // 4. Розпаковуємо backup у тимчасову папку
+      // 4. Розпаковуємо backup у тимчасову папку.
       const zip = new AdmZip(buffer);
       zip.extractAllTo(tempPath, true);
 
       const restoredDatabasePath = join(tempPath, 'dilovod.sqlite');
-
       const restoredDocumentsPath = join(tempPath, 'documents');
 
-      // 5. Перевіряємо розпаковану БД
+      // 5. Перевіряємо, що БД справді є після розпакування.
       if (!existsSync(restoredDatabasePath)) {
         throw new BadRequestException('У резервній копії відсутня база даних');
       }
 
-      // 6. Закриваємо TypeORM / better-sqlite3
+      // 6. Закриваємо поточне з'єднання з SQLite.
       if (this.dataSource.isInitialized) {
         await this.dataSource.destroy();
-        connectionClosed = true;
       }
 
-      // 7. Замінюємо SQLite
+      replacementStarted = true;
+
+      // 7. Замінюємо БД.
       cpSync(restoredDatabasePath, databasePath);
 
-      // 8. Замінюємо документи
+      // 8. Замінюємо документи.
       if (existsSync(documentsPath)) {
         rmSync(documentsPath, {
           recursive: true,
@@ -170,15 +173,23 @@ export class BackupService {
         mkdirSync(documentsPath, { recursive: true });
       }
 
-      // 9. Знову відкриваємо з'єднання з відновленою БД
-      await this.dataSource.initialize();
-      connectionClosed = false;
+      // 9. Якщо backup був створений старою версією OPORA,
+      // реєструємо InitialSchema як базову migration.
+      prepareLegacyDatabase();
 
-      // 10. Видаляємо тимчасові файли
-      rmSync(tempPath, {
-        recursive: true,
-        force: true,
-      });
+      // 10. Відкриваємо відновлену БД.
+      // TypeORM автоматично виконає всі наступні migrations.
+      await this.dataSource.initialize();
+
+      replacementStarted = false;
+
+      // 11. Прибираємо тимчасові файли.
+      if (existsSync(tempPath)) {
+        rmSync(tempPath, {
+          recursive: true,
+          force: true,
+        });
+      }
 
       return {
         success: true,
@@ -186,15 +197,92 @@ export class BackupService {
         safetyBackupPath,
       };
     } catch (error: unknown) {
-      // Якщо ми вже закрили БД, намагаємося повернути з'єднання
-      if (connectionClosed && !this.dataSource.isInitialized) {
+      /*
+       * Якщо ми вже почали заміну робочих даних і щось пішло
+       * не так — автоматично повертаємо стан, який був
+       * безпосередньо перед Restore.
+       */
+      if (replacementStarted && safetyBackupPath) {
+        try {
+          if (this.dataSource.isInitialized) {
+            await this.dataSource.destroy();
+          }
+
+          const rollbackPath = join(tempPath, 'rollback');
+
+          if (existsSync(rollbackPath)) {
+            rmSync(rollbackPath, {
+              recursive: true,
+              force: true,
+            });
+          }
+
+          mkdirSync(rollbackPath, { recursive: true });
+
+          const safetyZip = new AdmZip(safetyBackupPath);
+          safetyZip.extractAllTo(rollbackPath, true);
+
+          const safetyDatabasePath = join(rollbackPath, 'dilovod.sqlite');
+
+          const safetyDocumentsPath = join(rollbackPath, 'documents');
+
+          if (!existsSync(safetyDatabasePath)) {
+            throw new Error('У страховочній копії відсутня база даних');
+          }
+
+          // Повертаємо попередню БД.
+          cpSync(safetyDatabasePath, databasePath);
+
+          // Повертаємо попередні документи.
+          if (existsSync(documentsPath)) {
+            rmSync(documentsPath, {
+              recursive: true,
+              force: true,
+            });
+          }
+
+          if (existsSync(safetyDocumentsPath)) {
+            cpSync(safetyDocumentsPath, documentsPath, {
+              recursive: true,
+            });
+          } else {
+            mkdirSync(documentsPath, { recursive: true });
+          }
+
+          // На випадок, якщо страховочна БД теж legacy.
+          prepareLegacyDatabase();
+
+          // Повертаємо з'єднання з відновленою попередньою БД.
+          await this.dataSource.initialize();
+        } catch (rollbackError: unknown) {
+          const rollbackMessage =
+            rollbackError instanceof Error
+              ? rollbackError.message
+              : 'Невідома помилка';
+
+          console.error(`Критична помилка rollback OPORA: ${rollbackMessage}`);
+        }
+      } else if (!this.dataSource.isInitialized) {
+        /*
+         * Якщо робочі файли ще не замінювалися,
+         * але connection виявився закритим,
+         * просто намагаємося його повернути.
+         */
         try {
           await this.dataSource.initialize();
-        } catch {
-          // Основну помилку restore не перезаписуємо
+        } catch (reconnectError: unknown) {
+          const reconnectMessage =
+            reconnectError instanceof Error
+              ? reconnectError.message
+              : 'Невідома помилка';
+
+          console.error(
+            `Не вдалося повторно підключити БД OPORA: ${reconnectMessage}`,
+          );
         }
       }
 
+      // Прибираємо тимчасові файли незалежно від результату.
       if (existsSync(tempPath)) {
         rmSync(tempPath, {
           recursive: true,
